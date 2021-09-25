@@ -1,0 +1,9 @@
+provider: digitalocean
+
+sources: [
+    "ingress"
+]
+
+env:
+  - name: "DO_TOKEN"
+    value: "${do-token}"

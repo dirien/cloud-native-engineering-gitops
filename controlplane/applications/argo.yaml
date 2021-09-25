@@ -1,0 +1,26 @@
+server:
+  certificate:
+    enabled: true
+    domain: argocd.ediri.online
+    issuer:
+      kind: ClusterIssuer
+      name: letsencrypt-staging
+    secretName: ediri-online-tls
+  ingress:
+    ingressClassName: traefik
+    hosts:
+      - argocd.ediri.online
+    enabled: true
+    tls:
+      - hosts:
+          - argocd.ediri.online
+        secretName: ediri-online-tls
+    annotations:
+      external-dns.alpha.kubernetes.io/hostname: argocd.ediri.online
+      external-dns.alpha.kubernetes.io/ttl: "60"
+  extraArgs:
+    - --insecure
+
+dex:
+  enabled: false
+
