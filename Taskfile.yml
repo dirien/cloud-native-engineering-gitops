@@ -1,0 +1,102 @@
+version: 3
+tasks:
+  controlplane-infrastructure:
+    desc: "Deploy the controlplane"
+    dir: "controlplane/infrastructure"
+    cmds:
+      - cmd: |
+          terraform init
+          terraform plan
+          terraform apply --auto-approve
+
+  controlplane-applications:
+    desc: "Deploy the controlplane"
+    dir: "controlplane/applications"
+    deps:
+      - task: controlplane-infrastructure
+    cmds:
+      - cmd: |
+          terraform init
+          terraform plan
+          terraform apply --auto-approve
+
+  controlplane:
+    desc: "Login to argocd"
+    env:
+      KUBECONFIG: controlplane/infrastructure/controlplane.yaml
+    cmds:
+      - task: controlplane-applications
+      - cmd: |
+          PW=$(kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath={.data.password} | base64 -D)
+          argocd login argocd.ediri.online --grpc-web --insecure --username admin --password $PW
+
+  multicluster-infrastructure:
+    desc: "Deploy the Multi Cloud Cluster"
+    dir: multi-cluster/infrastructure
+    cmds:
+      - cmd: |
+          terraform init
+          terraform plan
+          terraform apply --auto-approve
+
+  scw-register-argocd:
+    desc: "Register Scaleway Cluster to ArgoCD"
+    dir: multi-cluster/infrastructure
+    env:
+      KUBECONFIG: scw.yaml
+    cmds:
+      - cmd: |
+          CONTEXT=$(kubectl config current-context)
+          argocd cluster add $CONTEXT --name scw-cluster -y
+
+  linode-register-argocd:
+    desc: "Register Linode Cluster to ArgoCD"
+    dir: multi-cluster/infrastructure
+    env:
+      KUBECONFIG: linode.yaml
+    cmds:
+      - cmd: |
+          CONTEXT=$(kubectl config current-context)
+          argocd cluster add $CONTEXT r --name linode-cluster -y
+
+  multicluster:
+    desc: "Deploy the Matrix ApplicationSet to ArgoCD"
+    dir: multi-cluster/application
+    deps:
+      - task: multicluster-infrastructure
+    env:
+      KUBECONFIG: ../../controlplane/infrastructure/controlplane.yaml
+    cmds:
+      - task: scw-register-argocd
+      - task: linode-register-argocd
+      - cmd: |
+          export TF_VAR_kubeconfig=$KUBECONFIG
+          terraform init
+          terraform plan
+          terraform apply --auto-approve
+
+  multicluster-purge-application:
+    desc: "Purge the multi-cluster application"
+    dir: multi-cluster/application
+    env:
+      KUBECONFIG: ../../controlplane/infrastructure/controlplane.yaml
+    cmds:
+      - cmd: |
+          export TF_VAR_kubeconfig=$KUBECONFIG
+          kubectl delete secret -n argocd --selector="argocd.argoproj.io/secret-type"
+          terraform destroy --auto-approve
+
+  multicluster-purge:
+    desc: "Purge the multi-cluster"
+    dir: multi-cluster/infrastructure
+    deps:
+      - task: multicluster-purge-application
+    cmds:
+      - cmd: |
+          terraform destroy --auto-approve
+
+  default:
+    desc: "Default task to deploy the whole infrastructure and applications"
+    cmds:
+      - task: controlplane
+      - task: multicluster

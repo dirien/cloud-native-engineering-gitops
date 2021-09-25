@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: podtato-head-app-set
+  namespace: argocd
+spec:
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            argocd.argoproj.io/secret-type: cluster
+  template:
+    metadata:
+      name: '{{name}}-podtato-head'
+    spec:
+      project: default
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+      source:
+        repoURL: https://github.com/podtato-head/podtato-head
+        targetRevision: HEAD
+        path: 'delivery/chart'
+        helm:
+          parameters: [ ]
+            #- name: hats.tag
+            #  value: v2-latest-dev
+      destination:
+        server: '{{server}}'
+        namespace: podtato-head
