@@ -21,7 +21,7 @@ spec:
         syncOptions:
           - CreateNamespace=true
       source:
-        repoURL: https://github.com/podtato-head/podtato-head
+        repoURL: https://github.com/dirien/podtato-head
         targetRevision: HEAD
         path: 'delivery/chart'
         helm:
