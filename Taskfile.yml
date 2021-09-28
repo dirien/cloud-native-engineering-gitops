@@ -12,6 +12,8 @@ tasks:
   controlplane-applications:
     desc: "Deploy the controlplane"
     dir: "controlplane/applications"
+    env:
+      KUBECONFIG: ../infrastructure/controlplane.yaml
     deps:
       - task: controlplane-infrastructure
     cmds:
@@ -19,6 +21,7 @@ tasks:
           terraform init
           terraform plan
           terraform apply --auto-approve
+          kubectl apply -f cluster-issuer-staging.yaml
 
   controlplane:
     desc: "Login to argocd"

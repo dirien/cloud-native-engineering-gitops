@@ -5,5 +5,8 @@ sources: [
 ]
 
 env:
-  - name: "DO_TOKEN"
-    value: "${do-token}"
+  - name: DO_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: do-token
+        key: DIGITALOCEAN_TOKEN

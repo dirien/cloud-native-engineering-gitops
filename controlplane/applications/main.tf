@@ -24,18 +24,35 @@ provider "kubernetes" {
   config_path = "../infrastructure/${var.kubeconfig}"
 }
 
+
 resource "helm_release" "external-dns" {
   name             = "external-dns"
   repository       = "https://kubernetes-sigs.github.io/external-dns/"
   chart            = "external-dns"
   create_namespace = true
   version          = "1.2.0"
-  namespace        = "external-dns"
+  namespace        = kubernetes_namespace.external-dns.metadata[0].name
   values           = [
     templatefile("external-dns.yaml", {
       do-token = var.do-token
     })
   ]
+}
+
+resource "kubernetes_namespace" "external-dns" {
+  metadata {
+    name = "external-dns"
+  }
+}
+
+resource "kubernetes_secret" "do-token" {
+  metadata {
+    name      = "do-token"
+    namespace = kubernetes_namespace.external-dns.metadata[0].name
+  }
+  data = {
+    DIGITALOCEAN_TOKEN = var.do-token
+  }
 }
 
 resource "helm_release" "cert-manager" {
@@ -51,13 +68,14 @@ resource "helm_release" "cert-manager" {
   }
 }
 
+/*
 resource "kubernetes_manifest" "issuer" {
   manifest   = yamldecode(file("cluster-issuer-staging.yaml"))
   depends_on = [
     helm_release.cert-manager
   ]
 }
-
+*/
 resource "helm_release" "argo" {
   name             = "argo"
   repository       = "https://argoproj.github.io/argo-helm"
@@ -67,6 +85,9 @@ resource "helm_release" "argo" {
   version          = "3.21.0"
   values           = [
     file("argo.yaml")
+  ]
+  depends_on = [
+    helm_release.cert-manager
   ]
 }
 resource "helm_release" "argocd-applicationset" {
